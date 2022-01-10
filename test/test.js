@@ -36,6 +36,11 @@ contract('dBank', ([deployer, user]) => {
       it('dBank should have Token minter role', async () => {
         expect(await token.minter()).to.eq(dbank.address)
       })
+      it('token price is here', async () => {
+
+        console.log(Number(await token.getPrice()));
+        expect(await token.minter()).to.eq(dbank.address)
+      })
     })
 
     describe('failure', () => {
@@ -49,23 +54,23 @@ contract('dBank', ([deployer, user]) => {
     })
   })
 
-  describe('testing payFee...', () => {
-    let balance
+  // describe('testing payFee...', () => {
+  //   let balance
 
-    describe('success', () => {
-      beforeEach(async () => {
-        await dbank.payFee({value: 10**17, from: user}) //0.01 ETH
-      })
+  //   describe('success', () => {
+  //     beforeEach(async () => {
+  //       await dbank.payFee({value: 10**17, from: user}) //0.01 ETH
+  //     })
 
-      it('balance of token should increase', async () => {
-        expect(Number(await token.balanceOf(user))).to.eq(100)
-      })
-    })
+  //     it('balance of token should increase', async () => {
+  //       expect(Number(await token.balanceOf(user))).to.eq(100)
+  //     })
+  //   })
 
-    describe('failure', () => {
-      it('test paying fee should be rejected', async () => {
-        await dbank.payFee({value: 10**15, from: user}).should.be.rejectedWith(EVM_REVERT) //to small amount
-      })
-    })
-  })
+  //   describe('failure', () => {
+  //     it('test paying fee should be rejected', async () => {
+  //       await dbank.payFee({value: 10**15, from: user}).should.be.rejectedWith(EVM_REVERT) //to small amount
+  //     })
+  //   })
+  // })
 })

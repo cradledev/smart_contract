@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { ethers } from 'ethers';
 import { parseEther, formatEther } from '@ethersproject/units';
 import TokenABI from '../abis/Token.json'
@@ -8,6 +8,24 @@ import dbankImg from '../dbank.png';
 import Web3 from 'web3';
 import './App.css';
 
+import { Form } from 'react-bootstrap'
+
+function useInterval(callback, delay) {
+  const savedCallback = useRef();
+
+  // Remember the latest callback.
+  useEffect(() => {
+    savedCallback.current = callback;
+  }, [callback]);
+
+  // Set up the interval.
+  useEffect(() => {
+    let id = setInterval(() => {
+      savedCallback.current();
+    }, delay);
+    return () => clearInterval(id);
+  }, [delay]);
+}
 function App() {
 
   const [web3, setWeb3] = useState('undefined');
@@ -17,13 +35,24 @@ function App() {
   const [balance, setBalance] = useState(0);
   const [dbankAddress, setDbankAddress] = useState(null);
   const [payFeeAmount, setFeeAmount] = useState(0);
+  const [balanceOfCimple, setBalanceOfCimple] = useState(0);
+  const [payType, setPayType] = useState('ETH');
+  const [processing, setProcessing] = useState(false);
+  const [periodTime, setPeriodTIme] = useState(0);
+  const [tokenPrice, setTokenPRice] = useState(0);
+
+  
   useEffect(() => {
     loadBlockchainData();
   }, []);
-
+  
+  
   // Sets up a new Ethereum provider and returns an interface for interacting with the smart contract
   async function loadBlockchainData() {
     if(typeof window.ethereum!=='undefined'){
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
+
       const web3 = new Web3(window.ethereum)
       const netId = await web3.eth.net.getId()
       // const accounts = await web3.eth.getAccounts()
@@ -40,13 +69,16 @@ function App() {
 
       //load contracts
       try {
-        const _token = new web3.eth.Contract(TokenABI.abi, TokenABI.networks[netId].address)
-        const _dBank = new web3.eth.Contract(dBankABI.abi, dBankABI.networks[netId].address)
+        
+        const _token = new ethers.Contract(TokenABI.networks[netId].address, TokenABI.abi, signer)
+        const _dBank = new ethers.Contract(dBankABI.networks[netId].address, dBankABI.abi, signer)
         const _dBankAddress = dBankABI.networks[netId].address
         const _tokenAddress = TokenABI.networks[netId].address
+        const _balanceOfToken = await _token.balanceOf(accounts[0]);
         setToken(_token);
         setDbank(_dBank);
         setDbankAddress(_dBankAddress);
+        setBalanceOfCimple(_balanceOfToken);
       } catch (e) {
         console.log('Error', e)
         window.alert('Contracts not deployed to the current network')
@@ -56,66 +88,60 @@ function App() {
       window.alert('Please install MetaMask')
     }
   }
-
+  async function getBalanceOfToken(){
+    if(web3 !== "undefined" || token !== "undefined") {
+      try {
+        // console.log(token);
+        const balance = await token.balanceOf(account)
+        setBalanceOfCimple(balance);
+        balance = await web3.eth.getBalance(account)
+        setBalance(balance);
+      } catch (error) {
+        console.log("error get balance of Cimple token", error);
+      }
+    }
+    
+    
+  }
   async function submitPayFee(event) {
     event.preventDefault();
+    setProcessing(true);
     if(dbank !== 'undefined'){
-      try {
-        // User inputs amount in terms of Ether, convert to Wei before sending to the contract.
-        const wei = parseEther(payFeeAmount);
-        await dbank.payFee({ value: wei });
-        // Wait for the smart contract to emit the LogBid event then update component state
-        dbank.on('PayFee', (_, __) => {
-          alert(1);
-        });
-      } catch (e) {
-        console.log('error paying fee: ', e);
+      if(payType === "ETH"){
+        try {
+          // User inputs amount in terms of Ether, convert to Wei before sending to the contract.
+          const wei = parseEther(payFeeAmount);
+          await dbank.payFee({value: wei});
+          // Wait for the smart contract to emit the LogBid event then update component state
+          setProcessing(true);
+          dbank.on('PayFee', (_, __) => {
+            getBalanceOfToken();
+            setProcessing(false);
+          });
+          const balance = await dbank.tokenPrice()
+          console.log(balance)
+          setTokenPRice(balance.toString());
+        } catch (e) {
+          console.log('error paying fee: ', e);
+          setProcessing(false);
+        }
+      }
+      if(payType === "Cimple"){
+        try {
+          const wei = parseEther(payFeeAmount);
+          await dbank.payFeeByToken(account, wei);
+          setProcessing(true);
+          dbank.on('PayFee', (_, __) => {
+            getBalanceOfToken();
+            setProcessing(false);
+          });
+        } catch (error) {
+          console.log('error paying fee: ', error);
+          setProcessing(false);
+        }
       }
     }
   }
-  // async deposit(amount) {
-  //   if(this.state.dbank!=='undefined'){
-  //     try{
-  //       await this.state.dbank.methods.deposit().send({value: amount.toString(), from: this.state.account})
-  //     } catch (e) {
-  //       console.log('Error, deposit: ', e)
-  //     }
-  //   }
-  // }
-
-  // async withdraw(e) {
-  //   e.preventDefault()
-  //   if(this.state.dbank!=='undefined'){
-  //     try{
-  //       await this.state.dbank.methods.withdraw().send({from: this.state.account})
-  //     } catch(e) {
-  //       console.log('Error, withdraw: ', e)
-  //     }
-  //   }
-  // }
-
-  // async borrow(amount) {
-  //   if(this.state.dbank!=='undefined'){
-  //     try{
-  //       await this.state.dbank.methods.borrow().send({value: amount.toString(), from: this.state.account})
-  //     } catch (e) {
-  //       console.log('Error, borrow: ', e)
-  //     }
-  //   }
-  // }
-
-  // async payOff(e) {
-  //   e.preventDefault()
-  //   if(this.state.dbank!=='undefined'){
-  //     try{
-  //       const collateralEther = await this.state.dbank.methods.collateralEther(this.state.account).call({from: this.state.account})
-  //       const tokenBorrowed = collateralEther/2
-  //       await this.state.token.methods.approve(this.state.dBankAddress, tokenBorrowed.toString()).send({from: this.state.account})
-  //       await this.state.dbank.methods.payOff().send({from: this.state.account})
-  //     } catch(e) {
-  //       console.log('Error, pay off: ', e)
-  //     }
-  //   }
 
 
     return (
@@ -127,7 +153,7 @@ function App() {
             target="_blank"
             rel="noopener noreferrer"
           >
-        <img src={dbank} className="App-logo" alt="logo" height="32"/>
+        <img src={dbankImg} className="App-logo" alt="logo" height="32"/>
           <b>d₿ank</b>
         </a>
         </nav>
@@ -139,14 +165,29 @@ function App() {
           <div className="row">
             <main role="main" className="col-lg-12 d-flex text-center">
               <div className="content mr-auto ml-auto">
-              <div>
+                <div>Period Time: {periodTime}    Token Price: {tokenPrice}</div>
+                <div>
                   How much do you want to pay fee?
                   <br></br>
                   (min. amount is 0.01 ETH)
                   <br></br>
-                  (1 deposit is possible at the time)
+                  Your Balance: ETH: {formatEther(balance)} CimpleToken: {formatEther(balanceOfCimple)}
                   <br></br>
+                  
                   <form onSubmit={submitPayFee}>
+                    <Form.Group controlId="formBasicSelect">
+                      <Form.Label>Select Pay Type</Form.Label>
+                      <Form.Control
+                        as="select"
+                        value={payType}
+                        onChange={e => {
+                          setPayType(e.target.value);
+                        }}
+                      >
+                        <option value="ETH">ETH</option>
+                        <option value="Cimple">Cimple</option>
+                      </Form.Control>
+                    </Form.Group>
                     <div className='form-group mr-sm-2'>
                     <br></br>
                       <input
@@ -159,7 +200,7 @@ function App() {
                         placeholder='amount...'
                         required />
                     </div>
-                    <button type='submit' className='btn btn-primary'>Pay</button>
+                    <button type='submit' disabled={processing} className='btn btn-primary'>Pay</button>
                   </form>
 
                 </div>
