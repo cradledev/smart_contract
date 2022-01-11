@@ -94,14 +94,12 @@ function App() {
     if(web3 !== "undefined" || token !== "undefined") {
       try {
         // console.log(token);
-        const bTimeStamp = await dbank.timeStamp();
-        console.log(bTimeStamp);
         const balance = await token.balanceOf(account)
         setBalanceOfCimple(balance);
         balance = await web3.eth.getBalance(account)
-        const tPrice = await token.tokenPrice();
-        console.log(tPrice)
-        setTokenPrice(formatEther(tPrice));
+        setBalance(balance);
+        const tPrice = await token.getPriceOfToken();
+        setTokenPrice(ethers.utils.formatUnits(tPrice, 9));
       } catch (error) {
         console.log("error get balance of Cimple token", error);
       }
@@ -132,8 +130,8 @@ function App() {
       }
       if(payType === "Cimple"){
         try {
-          const wei = parseEther(payFeeAmount);
-          console.log(wei);
+          const wei = payFeeAmount;
+          // console.log(wei);
           await dbank.payFeeByToken(account, wei);
           setProcessing(true);
           dbank.on('PayFee', (_, __) => {
@@ -183,7 +181,7 @@ function App() {
         </nav>
         <div className="container-fluid mt-5 text-center">
         <br></br>
-          <h1>Welcome to d₿ank</h1>
+          <h1>Welcome to WOLF d₿ank</h1>
           <h2>{account}</h2>
           <br></br>
           <div className="row">
@@ -194,7 +192,7 @@ function App() {
                   <br></br>
                   (min. amount is 0.01 ETH)
                   <br></br>
-                  Your Balance: ETH: {ethers.utils.formatUnits(balance, 18)} CimpleToken: {formatEther(balanceOfCimple)}
+                  Your Balance: ETH: {ethers.utils.formatUnits(balance, 18)} CimpleToken: {ethers.utils.formatUnits(balanceOfCimple, 0)}
                   <br></br>
                   
                   <form onSubmit={submitPayFee}>
@@ -231,7 +229,7 @@ function App() {
             </main>
             <main role="main" className="col-lg-6 d-flex text-center">
               <div className="content mr-auto ml-auto">
-                <div>Period Time: {periodTime}    Token Price: {tokenPrice}</div>
+                <div>Period Time: {periodTime}    Token Price: {tokenPrice} GWEI</div>
                 <Form>
                   <Form.Group controlId="duedate">
                     <Form.Control

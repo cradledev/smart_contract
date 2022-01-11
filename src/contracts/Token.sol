@@ -11,7 +11,7 @@ contract Token is ERC20 {
   uint256 private constant oneDayTimeStamp = 8.64 * 1e4;
   uint256 private constant oneYearTimeStamp = 3.154 * 1e7;
 
-  uint256 public tokenPrice;
+  uint256 public tokenPrice = 1000 * 1e9;
   event MinterChanged(address indexed from, address to);
   event ChangedPrice(uint256 indexed tPrice);
   constructor() public payable ERC20("CiMPLE Coupons", "CiMPLE") {
@@ -42,25 +42,28 @@ contract Token is ERC20 {
     require(publicStartDate < _currentTimeStamp, 'Error, selected date is lower than token publish date'); //dBank
     uint256 currentTimeStamp = _currentTimeStamp;
     uint256 periodTimeStamp = currentTimeStamp - publicStartDate;
-    uint256 tokenPrice = 10**12;
-    uint256 usedDayCount = uint256(periodTimeStamp / oneDayTimeStamp);
-    uint256 usedYearCount = uint256(periodTimeStamp / oneYearTimeStamp - 1);
+    uint256 usedDayCount = periodTimeStamp / oneDayTimeStamp;
+    uint256 usedYearCount = periodTimeStamp / oneYearTimeStamp;
     uint256 stepPrice = 100 * 1e9;
     if(usedYearCount < 1){
       stepPrice = 100 * 1e9;
     }else {
       // stepPrice = 100 * 1e9 * 1.75 * 981 ** usedYearCount / 1000 ** usedYearCount;
-      stepPrice = uint256(100 * 1e9 * 1.75 * 0.981);
+      stepPrice = 100 * 1e9 * 1.75 * 981 ** usedYearCount / 1000 ** usedYearCount;
       // stepPrice = 100 * 1e9;
     }
     if(periodTimeStamp <= 10 * oneDayTimeStamp) {
       tokenPrice = 1000 * 1e9;
     }
     else {
-      tokenPrice = uint256(1000 * 1e9 + usedDayCount * stepPrice);
+      tokenPrice = 1000 * 1e9 + (usedDayCount - 10) * stepPrice;
     }
     //  _totalEther =  totalEther;
     emit ChangedPrice(tokenPrice);
     return true;
- }
+  }
+
+  function getPriceOfToken() public view returns ( uint256 ) {
+    return tokenPrice;
+  }
 }
