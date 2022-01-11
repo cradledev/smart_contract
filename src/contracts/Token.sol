@@ -10,9 +10,10 @@ contract Token is ERC20 {
   uint256 private constant oneSecondTimeStamp = 1;
   uint256 private constant oneDayTimeStamp = 8.64 * 1e4;
   uint256 private constant oneYearTimeStamp = 3.154 * 1e7;
-  
-  event MinterChanged(address indexed from, address to);
 
+  uint256 public tokenPrice;
+  event MinterChanged(address indexed from, address to);
+  event ChangedPrice(uint256 indexed tPrice);
   constructor() public payable ERC20("CiMPLE Coupons", "CiMPLE") {
     minter = msg.sender; //only initially
     publicStartDate = block.timestamp;
@@ -36,27 +37,30 @@ contract Token is ERC20 {
 		_burn(account, amount);
 	}
 
-  function getPrice(uint256 _currentTimeStamp) public returns(uint256) {
+  function getPrice(uint256 _currentTimeStamp) public payable returns( bool ) {
     // require(msg.sender==minter, 'Error, msg.sender does not have minter role'); //dBank
+    require(publicStartDate < _currentTimeStamp, 'Error, selected date is lower than token publish date'); //dBank
     uint256 currentTimeStamp = _currentTimeStamp;
     uint256 periodTimeStamp = currentTimeStamp - publicStartDate;
-    uint256 tokenPrice = 1000 * 1e9;
-    if(periodTimeStamp <= 10 * oneSecondTimeStamp) {
+    uint256 tokenPrice = 10**12;
+    uint256 usedDayCount = uint256(periodTimeStamp / oneDayTimeStamp);
+    uint256 usedYearCount = uint256(periodTimeStamp / oneYearTimeStamp - 1);
+    uint256 stepPrice = 100 * 1e9;
+    if(usedYearCount < 1){
+      stepPrice = 100 * 1e9;
+    }else {
+      // stepPrice = 100 * 1e9 * 1.75 * 981 ** usedYearCount / 1000 ** usedYearCount;
+      stepPrice = uint256(100 * 1e9 * 1.75 * 0.981);
+      // stepPrice = 100 * 1e9;
+    }
+    if(periodTimeStamp <= 10 * oneDayTimeStamp) {
       tokenPrice = 1000 * 1e9;
     }
-    else if(periodTimeStamp > 10 * oneSecondTimeStamp && periodTimeStamp <= 20 * oneSecondTimeStamp) {
-      tokenPrice = 2000 * 1e9;
-    }
-    else if(periodTimeStamp > 20 * oneSecondTimeStamp && periodTimeStamp <= 30 * oneSecondTimeStamp) {
-      tokenPrice = 3000 * 1e9;
-    }
-    else if(periodTimeStamp > 30 * oneSecondTimeStamp && periodTimeStamp <= 40 * oneSecondTimeStamp) {
-      tokenPrice = 4000 * 1e9;
-    }
     else {
-      tokenPrice = 5000 * 1e9;
+      tokenPrice = uint256(1000 * 1e9 + usedDayCount * stepPrice);
     }
     //  _totalEther =  totalEther;
-     return tokenPrice;
+    emit ChangedPrice(tokenPrice);
+    return true;
  }
 }

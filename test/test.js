@@ -38,7 +38,7 @@ contract('dBank', ([deployer, user]) => {
       })
       it('token price is here', async () => {
 
-        console.log(Number(await token.getPrice()));
+        console.log("asdasdasd", Number(await token.getPrice(1646928802)));
         expect(await token.minter()).to.eq(dbank.address)
       })
     })

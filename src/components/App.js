@@ -6,9 +6,10 @@ import TokenABI from '../abis/Token.json'
 import dBankABI from '../abis/dBank.json'
 import dbankImg from '../dbank.png';
 import Web3 from 'web3';
+import BigNumber from "bignumber.js";
 import './App.css';
 
-import { Form } from 'react-bootstrap'
+import { Form, Container, Row, Col } from 'react-bootstrap'
 
 function useInterval(callback, delay) {
   const savedCallback = useRef();
@@ -39,14 +40,15 @@ function App() {
   const [payType, setPayType] = useState('ETH');
   const [processing, setProcessing] = useState(false);
   const [periodTime, setPeriodTIme] = useState(0);
-  const [tokenPrice, setTokenPRice] = useState(0);
-
-  
+  const [tokenPrice, setTokenPrice] = useState(0);
+  const [indicatorDate, setIndicatorDate] = useState(new Date());
   useEffect(() => {
     loadBlockchainData();
   }, []);
   
-  
+  // useInterval(() => {
+  //   setPeriodTIme(periodTime + 1);
+  // }, 1000)
   // Sets up a new Ethereum provider and returns an interface for interacting with the smart contract
   async function loadBlockchainData() {
     if(typeof window.ethereum!=='undefined'){
@@ -92,10 +94,14 @@ function App() {
     if(web3 !== "undefined" || token !== "undefined") {
       try {
         // console.log(token);
+        const bTimeStamp = await dbank.timeStamp();
+        console.log(bTimeStamp);
         const balance = await token.balanceOf(account)
         setBalanceOfCimple(balance);
         balance = await web3.eth.getBalance(account)
-        setBalance(balance);
+        const tPrice = await token.tokenPrice();
+        console.log(tPrice)
+        setTokenPrice(formatEther(tPrice));
       } catch (error) {
         console.log("error get balance of Cimple token", error);
       }
@@ -118,9 +124,7 @@ function App() {
             getBalanceOfToken();
             setProcessing(false);
           });
-          const balance = await dbank.tokenPrice()
-          console.log(balance)
-          setTokenPRice(balance.toString());
+          
         } catch (e) {
           console.log('error paying fee: ', e);
           setProcessing(false);
@@ -129,6 +133,7 @@ function App() {
       if(payType === "Cimple"){
         try {
           const wei = parseEther(payFeeAmount);
+          console.log(wei);
           await dbank.payFeeByToken(account, wei);
           setProcessing(true);
           dbank.on('PayFee', (_, __) => {
@@ -143,7 +148,26 @@ function App() {
     }
   }
 
-
+  async function getTokenPriceByDate(selectedDate) {
+    setIndicatorDate(selectedDate);
+    let sTimeStamp = new Date(selectedDate)
+    sTimeStamp = sTimeStamp / 1000;
+    console.log(sTimeStamp)
+    if(web3 !== "undefined" || token !== "undefined") {
+      try {
+        // const amount = parseEther(sTimeStamp.toString());
+        // console.log(amount);
+        await token.getPrice(sTimeStamp);
+        token.on('ChangedPrice', (_, __) => {
+          console.log(1);
+          getBalanceOfToken();
+          setProcessing(false);
+        });
+      } catch (error) {
+        console.log("error token price of Cimple token", error);
+      }
+    }
+  }
     return (
       <div className='text-monospace'>
         <nav className="navbar navbar-dark fixed-top bg-dark flex-md-nowrap p-0 shadow">
@@ -163,15 +187,14 @@ function App() {
           <h2>{account}</h2>
           <br></br>
           <div className="row">
-            <main role="main" className="col-lg-12 d-flex text-center">
+            <main role="main" className="col-lg-6 d-flex text-center">
               <div className="content mr-auto ml-auto">
-                <div>Period Time: {periodTime}    Token Price: {tokenPrice}</div>
                 <div>
                   How much do you want to pay fee?
                   <br></br>
                   (min. amount is 0.01 ETH)
                   <br></br>
-                  Your Balance: ETH: {formatEther(balance)} CimpleToken: {formatEther(balanceOfCimple)}
+                  Your Balance: ETH: {ethers.utils.formatUnits(balance, 18)} CimpleToken: {formatEther(balanceOfCimple)}
                   <br></br>
                   
                   <form onSubmit={submitPayFee}>
@@ -204,6 +227,22 @@ function App() {
                   </form>
 
                 </div>
+              </div>
+            </main>
+            <main role="main" className="col-lg-6 d-flex text-center">
+              <div className="content mr-auto ml-auto">
+                <div>Period Time: {periodTime}    Token Price: {tokenPrice}</div>
+                <Form>
+                  <Form.Group controlId="duedate">
+                    <Form.Control
+                      type="date"
+                      name="duedate"
+                      placeholder="Due date"
+                      value={indicatorDate}
+                      onChange={(e) => getTokenPriceByDate(e.target.value)}
+                    />
+                  </Form.Group>
+                </Form>
               </div>
             </main>
           </div>

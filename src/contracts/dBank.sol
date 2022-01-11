@@ -5,18 +5,18 @@ import "./Token.sol";
 
 contract dBank {
   Token private token;
-  uint256 public tokenPrice;
+  uint256 public timeStamp;
   event PayFee(address indexed user, uint etherAmount);
-
   constructor(Token _token) public {
     token = _token;
   }
 
   function payFee() public payable returns (bool) {
     require(msg.value > 0, 'Error, deposit must be >= 0');
-    tokenPrice = token.getPrice(block.timestamp);
+    bool tFlag = token.getPrice(block.timestamp);
+    uint256 tokenPrice = token.tokenPrice();
+    timeStamp = block.timestamp;
     token.mint(msg.sender, 10**20); //sending token to user
-
     emit PayFee(msg.sender, msg.value);
     return true;
   }
@@ -27,4 +27,5 @@ contract dBank {
     emit PayFee(payer, amount);
     return true;
   }
+
 }
