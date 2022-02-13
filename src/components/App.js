@@ -110,7 +110,7 @@ function App() {
   async function submitPayFee(event) {
     event.preventDefault();
     setProcessing(true);
-    if(dbank !== 'undefined'){
+    if(typeof window.ethereum!=='undefined' && dbank !== 'undefined'){
       if(payType === "ETH"){
         try {
           // User inputs amount in terms of Ether, convert to Wei before sending to the contract.
